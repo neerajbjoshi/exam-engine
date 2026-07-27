@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.log
+
+reference-documents/**
+!reference-documents/README.md
+!reference-documents/**/
+!reference-documents/**/README.md
+
+output/reports/**
+!output/reports/README.md
+!output/reports/**/
+!output/reports/**/README.md

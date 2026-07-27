@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>exam-engine — Chat with your Teacher</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --panel: #ffffff;
+    --ink: #2b2620;
+    --muted: #6b6255;
+    --border: #e4ddcf;
+    --accent: #b5642c;
+    --accent-ink: #ffffff;
+    --user-bubble: #eef1ea;
+    --teacher-bubble: #fff7ec;
+    --blazer: #2f5d50;
+    --collar: #f4f1ea;
+    --tie: #b5642c;
+    --skin: #e3ab7a;
+    --hair: #3a2a20;
+    --frame: #2b2620;
+    --eye: #2b2620;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a17;
+      --panel: #26231e;
+      --ink: #f1ece2;
+      --muted: #a89e8c;
+      --border: #3a352c;
+      --accent: #e08a4f;
+      --accent-ink: #1c1a17;
+      --user-bubble: #33392f;
+      --teacher-bubble: #34302a;
+      --blazer: #3d7566;
+      --collar: #26231e;
+      --tie: #e08a4f;
+      --skin: #d99e6c;
+      --hair: #2a1e17;
+      --frame: #f1ece2;
+      --eye: #1c1a17;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 720px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    flex: none;
+  }
+
+  #teacher-float {
+    animation: float 3.6s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  #wave-arm {
+    transform-origin: 142px 132px;
+  }
+
+  #wave-arm.waving {
+    animation: wave 1.3s ease-in-out 2;
+  }
+
+  @keyframes wave {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-20deg); }
+    40% { transform: rotate(6deg); }
+    60% { transform: rotate(-16deg); }
+    80% { transform: rotate(3deg); }
+  }
+
+  .avatar-bubble {
+    position: absolute;
+    top: -6px;
+    left: 74px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 999px;
+    opacity: 0;
+    transform: scale(0.6) translateY(6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .avatar-bubble.show {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  header p {
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: system-ui, sans-serif;
+  }
+
+  #log {
+    height: 420px;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: system-ui, sans-serif;
+  }
+
+  .msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.45;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    background: var(--user-bubble);
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.teacher {
+    align-self: flex-start;
+    background: var(--teacher-bubble);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg.pending { color: var(--muted); font-style: italic; }
+
+  form {
+    display: flex;
+    gap: 10px;
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, sans-serif;
+    font-size: 0.95rem;
+  }
+
+  input[type="text"]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  button {
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="avatar-wrap">
+        <svg id="teacher" viewBox="0 0 200 220" width="72" height="79" aria-hidden="true">
+          <g id="teacher-float">
+            <rect x="55" y="120" width="90" height="80" rx="24" fill="var(--blazer)" />
+            <rect x="90" y="115" width="20" height="25" fill="var(--collar)" />
+            <polygon points="95,118 100,140 105,118" fill="var(--tie)" />
+            <circle cx="100" cy="80" r="46" fill="var(--skin)" />
+            <path d="M56,70 Q100,20 144,70 Q140,40 100,38 Q60,40 56,70 Z" fill="var(--hair)" />
+            <circle cx="54" cy="82" r="7" fill="var(--skin)" />
+            <circle cx="146" cy="82" r="7" fill="var(--skin)" />
+            <circle cx="82" cy="82" r="14" fill="none" stroke="var(--frame)" stroke-width="4" />
+            <circle cx="118" cy="82" r="14" fill="none" stroke="var(--frame)" stroke-width="4" />
+            <line x1="96" y1="82" x2="104" y2="82" stroke="var(--frame)" stroke-width="4" />
+            <circle cx="82" cy="82" r="3" fill="var(--eye)" />
+            <circle cx="118" cy="82" r="3" fill="var(--eye)" />
+            <path d="M84,100 Q100,112 116,100" fill="none" stroke="var(--eye)" stroke-width="3" stroke-linecap="round" />
+            <path d="M58,135 Q40,150 45,175" fill="none" stroke="var(--blazer)" stroke-width="16" stroke-linecap="round" />
+            <g id="wave-arm">
+              <path d="M142,132 Q168,110 165,80" fill="none" stroke="var(--blazer)" stroke-width="16" stroke-linecap="round" />
+              <circle cx="165" cy="78" r="9" fill="var(--skin)" />
+            </g>
+          </g>
+        </svg>
+        <div id="avatar-bubble" class="avatar-bubble" aria-hidden="true">Hi! 👋</div>
+      </div>
+      <div>
+        <h1>exam-engine</h1>
+        <p>Your teacher — answers only from the chapters you've uploaded</p>
+      </div>
+    </header>
+
+    <div id="log" aria-live="polite"></div>
+
+    <form id="chat-form">
+      <input id="chat-input" type="text" placeholder="Say hi, or ask a question…" autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <script>
+    const log = document.getElementById("log");
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("chat-input");
+    const armEl = document.getElementById("wave-arm");
+    const bubbleEl = document.getElementById("avatar-bubble");
+
+    const GREETING_RE = /^\s*(hi+|hello+|hey+|yo|namaste|good\s*(morning|afternoon|evening))\b/i;
+
+    const GREETINGS = [
+      "Hi there! 👋 I'm your teacher for exam-engine. Ask me anything from your uploaded chapters, or ask me to generate a test.",
+      "Hello! Ready to learn? Ask a question from your textbook, or say \"generate a test for ...\".",
+      "Hey! 😊 I only answer from what's been uploaded to reference-documents — try asking about a chapter you've added.",
+    ];
+
+    function addMessage(text, who) {
+      const div = document.createElement("div");
+      div.className = "msg " + who;
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      return div;
+    }
+
+    function wave() {
+      armEl.classList.remove("waving");
+      void armEl.offsetWidth;
+      armEl.classList.add("waving");
+
+      bubbleEl.classList.add("show");
+      setTimeout(() => bubbleEl.classList.remove("show"), 1800);
+    }
+
+    function greet() {
+      wave();
+      const reply = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+      addMessage(reply, "teacher");
+    }
+
+    async function askBackend(message) {
+      const pending = addMessage("Thinking…", "teacher pending");
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+        const data = await res.json();
+        pending.remove();
+        addMessage(data.reply ?? data.error ?? "Sorry, I didn't get a response.", "teacher");
+      } catch {
+        pending.remove();
+        addMessage("I couldn't reach the exam-engine server. Is `npm run web` still running?", "teacher");
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      addMessage(message, "user");
+      input.value = "";
+
+      if (GREETING_RE.test(message)) {
+        greet();
+      } else {
+        askBackend(message);
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setTimeout(greet, 500);
+    });
+  </script>
+</body>
+</html>

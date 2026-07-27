@@ -1,0 +1,1 @@
+Example chapter folder — drop this chapter's source files here (PDF, text, markdown), then delete this README. Rename the `grade-10`, `mathematics`, and `chapter-01-algebra` folders to match your actual class, subject, and chapter.
