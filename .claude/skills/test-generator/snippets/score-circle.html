@@ -1,0 +1,121 @@
+<!--
+  score-circle component for test-generator's interactive HTML output.
+  Verified working (fill proportion, color thresholds at 50%/80%, animation,
+  centered label) via a live browser test — copy each block below verbatim
+  into the corresponding place in the generated page. Only touch the
+  --border/--accent/--ink/--muted custom-property fallbacks in the CSS block
+  if the page's own palette uses different variable names.
+
+  Placement:
+    - HTML block -> right after the chapter/topic header, before Section A
+    - CSS block  -> inside <style>
+    - JS block   -> inside <script>; call revealScoreCircle(correctCount, totalCount)
+                    from the Submit Test handler once Section A has been graded
+-->
+
+<!-- HTML -->
+<div id="score-circle-wrap" class="score-circle-wrap" hidden>
+  <div class="score-ring-box">
+    <svg class="score-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+      <circle class="score-ring-track" cx="60" cy="60" r="52"></circle>
+      <circle id="score-ring-fill" class="score-ring-fill" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="score-ring-label">
+      <span id="score-ring-fraction">0/0</span>
+      <span id="score-ring-percent">0%</span>
+    </div>
+  </div>
+  <div class="score-ring-caption">Section A score</div>
+</div>
+
+<!-- CSS -->
+<style>
+  .score-circle-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 4px auto 22px;
+  }
+  .score-ring-box {
+    position: relative;
+    width: 120px;
+    height: 120px;
+  }
+  .score-ring {
+    transform: rotate(-90deg);
+  }
+  .score-ring-track {
+    fill: none;
+    stroke: var(--border, #e4ddcf);
+    stroke-width: 10;
+  }
+  .score-ring-fill {
+    fill: none;
+    stroke: var(--accent, #b5642c);
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-out, stroke 0.3s ease;
+  }
+  .score-ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, sans-serif;
+  }
+  #score-ring-fraction {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink, #2b2620);
+  }
+  #score-ring-percent {
+    font-size: 0.75rem;
+    color: var(--muted, #6b6255);
+  }
+  .score-ring-caption {
+    font-family: system-ui, sans-serif;
+    font-size: 0.8rem;
+    color: var(--muted, #6b6255);
+  }
+</style>
+
+<!-- JS -->
+<script>
+  const RING_RADIUS = 52;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+  function initScoreRing() {
+    const fill = document.getElementById("score-ring-fill");
+    fill.style.strokeDasharray = String(RING_CIRCUMFERENCE);
+    fill.style.strokeDashoffset = String(RING_CIRCUMFERENCE);
+  }
+
+  // Call once Section A has been graded, e.g.:
+  //   revealScoreCircle(correctCount, totalSectionAQuestions)
+  function revealScoreCircle(correct, total) {
+    const wrap = document.getElementById("score-circle-wrap");
+    const fill = document.getElementById("score-ring-fill");
+    const fraction = document.getElementById("score-ring-fraction");
+    const percent = document.getElementById("score-ring-percent");
+
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const offset = RING_CIRCUMFERENCE * (1 - pct / 100);
+
+    fraction.textContent = `${correct}/${total}`;
+    percent.textContent = `${pct}%`;
+
+    let color = "#c0392b"; // red, below 50%
+    if (pct >= 80) color = "#2f7d4f"; // green, 80% and up
+    else if (pct >= 50) color = "#b5642c"; // amber, 50-79%
+    fill.style.stroke = color;
+
+    wrap.hidden = false;
+    void fill.getBoundingClientRect(); // force reflow so the fill transition plays
+    fill.style.strokeDashoffset = String(offset);
+  }
+
+  window.addEventListener("DOMContentLoaded", initScoreRing);
+</script>

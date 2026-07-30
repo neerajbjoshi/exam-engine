@@ -177,6 +177,38 @@
 
   .msg.pending { color: var(--muted); font-style: italic; }
 
+  .choice-label {
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .choice-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .choice-btn {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-family: system-ui, sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .choice-btn:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .choice-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
   form {
     display: flex;
     gap: 10px;
@@ -255,7 +287,7 @@
     <div id="log" aria-live="polite"></div>
 
     <form id="chat-form">
-      <input id="chat-input" type="text" placeholder="Say hi, or ask a question…" autocomplete="off" />
+      <input id="chat-input" type="text" placeholder="Say hi, or type &quot;start the engine&quot; to begin…" autocomplete="off" />
       <button type="submit">Send</button>
     </form>
   </div>
@@ -316,6 +348,139 @@
       }
     }
 
+    // --- "start the engine" onboarding flow ---
+    // Entirely client-side plus a filesystem-only /api/catalog call — never
+    // talks to the agent. It only pre-fills the input box; the user still has
+    // to press Send themselves before anything reaches the (paid) backend.
+
+    const START_ENGINE_RE = /start\s+the\s+engine/i;
+
+    const INTENTS = [
+      {
+        label: "Ask a question",
+        build: (cls, subject) => `For ${humanize(cls.name)}, ${humanize(subject)}: `,
+      },
+      {
+        label: "Generate a test",
+        build: (cls, subject) =>
+          `Generate a test for ${humanize(cls.name)} ${humanize(subject)} covering all chapters.`,
+      },
+      {
+        label: "Generate an interactive HTML test",
+        build: (cls, subject) =>
+          `Generate an interactive HTML test for ${humanize(cls.name)} ${humanize(subject)} covering all chapters.`,
+      },
+      {
+        label: "Exam prep / revision help",
+        build: (cls, subject) =>
+          `Help me prepare for my ${humanize(subject)} exam for ${humanize(cls.name)} — give me a summary and revision notes.`,
+      },
+    ];
+
+    function humanize(name) {
+      return name.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    function addCustomMessage(who, buildFn) {
+      const div = document.createElement("div");
+      div.className = "msg " + who;
+      buildFn(div);
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      return div;
+    }
+
+    function makeChoiceButton(label, onClick) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "choice-btn";
+      btn.textContent = label;
+      btn.addEventListener("click", onClick);
+      return btn;
+    }
+
+    function disableButtons(containerDiv) {
+      containerDiv.querySelectorAll("button").forEach((b) => (b.disabled = true));
+    }
+
+    function renderChoices(labelText, options) {
+      addCustomMessage("teacher", (div) => {
+        const label = document.createElement("div");
+        label.className = "choice-label";
+        label.textContent = labelText;
+        div.appendChild(label);
+
+        const row = document.createElement("div");
+        row.className = "choice-row";
+        for (const opt of options) {
+          row.appendChild(makeChoiceButton(opt.label, () => opt.onClick(div)));
+        }
+        div.appendChild(row);
+      });
+    }
+
+    async function startEngineFlow() {
+      wave();
+
+      let catalog = [];
+      try {
+        const res = await fetch("/api/catalog");
+        catalog = (await res.json()).classes ?? [];
+      } catch {
+        catalog = [];
+      }
+
+      if (!catalog.length) {
+        addMessage(
+          "I couldn't find any uploaded material yet under reference-documents/. Add a class/subject/chapter folder there, then say \"start the engine\" again.",
+          "teacher",
+        );
+        return;
+      }
+
+      renderChoices(
+        "Let's set things up. Which class?",
+        catalog.map((cls) => ({
+          label: humanize(cls.name),
+          onClick: (div) => chooseClass(cls, div),
+        })),
+      );
+    }
+
+    function chooseClass(cls, containerDiv) {
+      disableButtons(containerDiv);
+      renderChoices(
+        `${humanize(cls.name)} — which subject?`,
+        cls.subjects.map((subject) => ({
+          label: humanize(subject),
+          onClick: (div) => chooseSubject(cls, subject, div),
+        })),
+      );
+    }
+
+    function chooseSubject(cls, subject, containerDiv) {
+      disableButtons(containerDiv);
+      renderChoices(
+        `${humanize(cls.name)} ${humanize(subject)} — what would you like to do?`,
+        INTENTS.map((intent) => ({
+          label: intent.label,
+          onClick: (div) => finishOnboarding(cls, subject, intent, div),
+        })),
+      );
+    }
+
+    function finishOnboarding(cls, subject, intent, containerDiv) {
+      disableButtons(containerDiv);
+      const prompt = intent.build(cls, subject);
+      input.value = prompt;
+      input.focus();
+      input.setSelectionRange(prompt.length, prompt.length);
+      addMessage(
+        "I've filled in a starting prompt for you below — edit it if you like, then hit Send.",
+        "teacher",
+      );
+    }
+
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const message = input.value.trim();
@@ -323,7 +488,9 @@
       addMessage(message, "user");
       input.value = "";
 
-      if (GREETING_RE.test(message)) {
+      if (START_ENGINE_RE.test(message)) {
+        startEngineFlow();
+      } else if (GREETING_RE.test(message)) {
         greet();
       } else {
         askBackend(message);
@@ -332,6 +499,9 @@
 
     window.addEventListener("DOMContentLoaded", () => {
       setTimeout(greet, 500);
+      setTimeout(() => {
+        addMessage('Type "start the engine" any time to pick a class, subject, and what you\'d like to do.', "teacher");
+      }, 1100);
     });
   </script>
 </body>

@@ -1,0 +1,533 @@
+<!--
+  dashboard-template.html — shared interactive-HTML page shell for test-generator.
+
+  This is the ONE template every subject's interactive HTML test is built from —
+  do not hand-roll page styling per generation. Fill in the {{PLACEHOLDER}} tokens
+  below with subject-specific content and copy the result to
+  output/reports/<Subject>-<Class>-<DD-MM>-test.html. Everything outside the
+  placeholders (layout, dashboard, grading engine, theming) is verified and should
+  be copied as-is.
+
+  Required steps to use this template:
+    1. Copy this whole file.
+    2. Replace {{BOOTSTRAP_CSS}} with the full, verbatim contents of
+       `.claude/skills/test-generator/snippets/bootstrap.min.css` (Bootstrap 5.3.8,
+       vendored via npm so the page stays fully offline/self-contained — never
+       link it from a CDN).
+    3. Replace the remaining {{PLACEHOLDER}} tokens (see list below).
+    4. Do not touch anything else — the dashboard, grading engine, and theming
+       are generic and already work for any subject/section count.
+
+  Placeholders:
+    {{PAGE_TITLE}}          - <title> text, e.g. "Mathematics — Grade 7 — Chapters 1 & 2"
+    {{SUBJECT_HEADING}}     - e.g. "Mathematics — Grade 7"
+    {{CHAPTER_LINE}}        - e.g. "Chapter 1: Large Numbers Around Us & Chapter 2: Arithmetic Expressions"
+    {{TOTAL_MARKS}}         - e.g. "40" (omit the marks badge entirely if the format has no marks system — see below)
+    {{TIME}}                - e.g. "90 minutes"
+    {{SOURCE_NOTE}}         - one line citing the reference-documents file(s) and any scope assumption
+    {{SECTIONS_HTML}}       - one <section class="card section-block" data-section="..."> block per test section
+                              (Section A/B for the generic format, A-D for mathematics) — see contract below
+    {{SUMMARY_HTML}}        - chapter summary paragraph(s) — Reference Material tab
+    {{IMPORTANT_TOPICS_HTML}} - the "Most Important Topics" Q&A crib sheet — Reference Material tab.
+                              Grounded in whatever the source PDF itself visually emphasizes: run
+                              `node scripts/pdf-text.mjs <file>` and use its inline **bold** / [RED]...[/RED]
+                              tags as the candidate list (see that script's own header comment — it's a
+                              best-effort tagger, not a full PDF parser, and in some source PDFs bold
+                              correlates with an overlaid answer-key layer rather than genuine emphasis, so
+                              curate the tagged candidates rather than dumping all of them). Each item:
+                              <details class="card mb-2"><summary class="card-header">Q: ...</summary>
+                              <div class="card-body">A: ...</div></details>
+    {{REVISION_HTML}}       - "likely to be asked" practice Q&A, same <details> markup as above, but drawn
+                              from the source's own worked exercises (Figure It Out / practice questions) —
+                              realistic exam-style questions with worked answers, distinct from both the
+                              graded test questions and the concept-level Most Important Topics Q&A.
+    {{KEY_TERMS_HTML}}      - <dt>/<dd> pairs, one per the chapter's own numbered sub-heading (e.g. "1.1 A
+                              Lakh Varieties!", "2.2 Reading and Evaluating Complex Expressions") with a
+                              one-line gloss of what that section covers — Reference Material tab.
+
+  The page has two top-level tabs: **Test** (dashboard + the graded form) and
+  **Reference Material**, whose four sub-tabs are always in this order: Chapter
+  Summary, Most Important Topics, Revision Notes, Key Terms. Both tab layers
+  reuse the same generic `data-tab-target` JS below — do not add Bootstrap's JS
+  bundle just for tabs.
+
+  Question markup contract (must match exactly — the grading engine below depends on it):
+    Auto-scored (Section A only, always the objective section):
+      <div class="q card mb-3" data-qid="a1" data-type="mcq|tf|fib" data-answer="...">
+        <div class="card-body">
+          <div class="d-flex justify-content-end">{{SOLUTION_HELP_TRIGGER}}</div>
+          ... Bootstrap form-check radios (mcq/tf) or a form-control text input (fib) ...
+          <div class="feedback"></div>
+          {{SOLUTION_HELP_TEMPLATE}}
+        </div>
+      </div>
+    Free-response (every other section — never auto-scored, model answer shown on submit):
+      <div class="q card mb-3" data-qid="b1" data-type="free" data-model="...">
+        <div class="card-body">
+          <div class="d-flex justify-content-end">{{SOLUTION_HELP_TRIGGER}}</div>
+          <textarea class="form-control"></textarea>
+          <div class="model-answer"></div>
+          {{SOLUTION_HELP_TEMPLATE}}
+        </div>
+      </div>
+
+    Every question, in every section, gets a solution-help info icon that opens a shared
+    modal (not an inline reveal — a modal has no size limit, so long content scrolls
+    inside it rather than cramping the question card). Two pieces per question:
+
+    {{SOLUTION_HELP_TRIGGER}} — the icon button that opens the modal:
+      <button type="button" class="solution-help-trigger" data-qid="a1"
+              title="Show answer, justification, approach, and practice questions"
+              aria-label="Show answer, justification, approach, and practice questions">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="11" x2="12" y2="16"></line>
+          <circle cx="12" cy="7.5" r="0.9" fill="currentColor" stroke="none"></circle>
+        </svg>
+      </button>
+    The `data-qid` here must match the question's own `data-qid` — that's how the JS finds
+    the right template to clone into the modal.
+
+    {{SOLUTION_HELP_TEMPLATE}} — a <template> holding this question's modal content (inert
+    until cloned, so it can hold arbitrarily long/rich HTML with no escaping concerns):
+      <template class="solution-help-content" data-qid="a1">
+        <p class="mb-2"><strong>Answer:</strong> ...</p>
+        <p class="mb-2"><strong>Justification:</strong> ... (why that answer is correct)</p>
+        <p class="mb-3"><strong>Approach:</strong> ... (the method/steps to reach it)</p>
+        <hr>
+        <p class="fw-semibold mb-2">Try these similar questions:</p>
+        <p class="mb-2">1. ... <br><span class="text-body-secondary">Answer: ...</span></p>
+        <p class="mb-0">2. ... <br><span class="text-body-secondary">Answer: ...</span></p>
+      </template>
+    The two "similar questions" must be real questions grounded in the same source material
+    as the rest of the paper (pull them from the chapter's own worked examples/exercises,
+    the same way Revision Notes' Q&A is sourced) — never invented from general knowledge,
+    and never a verbatim repeat of the graded question or of each other. Give each a short
+    final-value answer (not a full worked solution — that's what Approach is for).
+
+    The modal shell itself (one copy per page, not per question) is already in this
+    template's body — do not duplicate it. It's driven by the small vanilla JS below
+    (open/close, backdrop, Escape-to-close) using Bootstrap's own `.modal`/`.modal-backdrop`
+    CSS classes for styling — do not add Bootstrap's JS bundle just for this.
+
+    Optional: add data-marks="N" to any question to enable the "Marks Scored" dashboard
+    tile (sum of correct answers' marks vs total marks). Omit it entirely for formats
+    with no marks system — the tile hides itself automatically when no question has it.
+    Per-question marks are tracked via this attribute only — never render a visible
+    "N marks" badge next to a question; the section header's marks badge and the
+    dashboard tile are the only places marks are shown.
+
+    Do not add a per-question source citation (chapter/file) either — the page-level
+    {{SOURCE_NOTE}} at the top already covers that once for the whole page. (The
+    Markdown output mode still cites every question individually — this simplification
+    is specific to the interactive HTML page.)
+
+  Do not add a second theme toggle, second grading loop, or a competing score
+  widget elsewhere on the page — this template's dashboard is the only one.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{PAGE_TITLE}}</title>
+<style>
+{{BOOTSTRAP_CSS}}
+</style>
+<style>
+  :root {
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-critical: #d03b3b;
+    --accent: #2a78d6;
+    --bs-primary: #2a78d6;
+    --bs-primary-rgb: 42, 120, 214;
+    --bs-success: #0ca30c;
+    --bs-success-rgb: 12, 163, 12;
+    --bs-warning: #fab219;
+    --bs-warning-rgb: 250, 178, 25;
+    --bs-danger: #d03b3b;
+    --bs-danger-rgb: 208, 59, 59;
+  }
+  [data-bs-theme="dark"] {
+    --bs-primary: #3987e5;
+    --bs-primary-rgb: 57, 135, 229;
+  }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .page-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  .theme-toggle-wrap { position: sticky; top: 12px; float: right; z-index: 10; }
+  .source-note { font-size: 0.8rem; }
+  .q .card-body { padding: 1.1rem 1.25rem; }
+  .solution-help-trigger {
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    width: 26px; height: 26px; border-radius: 50%; color: var(--accent);
+    background: transparent; border: 1px solid var(--bs-border-color); padding: 0;
+  }
+  .solution-help-trigger:hover { background: rgba(var(--bs-primary-rgb), 0.1); }
+  #solution-modal .modal-body :is(hr) { margin: 1rem 0; }
+  .feedback { margin-top: 8px; padding: 8px 10px; border-radius: 6px; font-size: 0.88rem; display: none; }
+  .feedback.correct { background: rgba(var(--bs-success-rgb), 0.12); color: var(--status-good); display: block; }
+  .feedback.incorrect { background: rgba(var(--bs-danger-rgb), 0.12); color: var(--status-critical); display: block; }
+  .model-answer {
+    margin-top: 10px; padding: 10px 12px; border-radius: 6px; display: none;
+    background: rgba(var(--bs-primary-rgb), 0.08); border-left: 3px solid var(--accent); font-size: 0.88rem;
+  }
+  .stat-tile { text-align: center; }
+  .stat-tile .stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+  .stat-tile .stat-label { font-size: 0.78rem; opacity: 0.75; }
+  .score-ring-box { position: relative; width: 96px; height: 96px; margin: 0 auto; }
+  .score-ring { transform: rotate(-90deg); }
+  .score-ring-track { fill: none; stroke: var(--bs-border-color); stroke-width: 9; }
+  .score-ring-fill {
+    fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-out, stroke 0.3s ease;
+  }
+  .score-ring-label {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  #score-ring-fraction { font-size: 0.95rem; font-weight: 700; }
+  #score-ring-percent { font-size: 0.7rem; opacity: 0.75; }
+  #submit-btn { min-width: 200px; }
+  #dashboard-wrap { display: none; }
+  .tab-pane { display: none; }
+  .tab-pane.active.show { display: block; }
+  details.card > summary { cursor: pointer; list-style: none; }
+  details.card > summary::-webkit-details-marker { display: none; }
+  details.card > summary::before { content: "▸ "; }
+  details.card[open] > summary::before { content: "▾ "; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="theme-toggle-wrap">
+    <button type="button" id="theme-toggle" class="btn btn-sm btn-outline-secondary" aria-label="Toggle light/dark theme">🌓</button>
+  </div>
+
+  <header class="text-center mb-2">
+    <h1 class="h3 mb-1">{{SUBJECT_HEADING}}</h1>
+    <p class="mb-1">{{CHAPTER_LINE}}</p>
+    <p class="text-body-secondary mb-0">
+      <span class="badge text-bg-secondary">Total Marks: {{TOTAL_MARKS}}</span>
+      <span class="badge text-bg-secondary">Time: {{TIME}}</span>
+    </p>
+  </header>
+  <p class="source-note text-body-secondary text-center mb-4">{{SOURCE_NOTE}}</p>
+
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button type="button" class="nav-link active" data-tab-target="tab-test">Test</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button type="button" class="nav-link" data-tab-target="tab-reference">Reference Material</button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <div class="tab-pane active show" id="tab-test">
+
+      <!-- Results dashboard: hidden until Submit Test is pressed -->
+      <div id="dashboard-wrap" class="card mb-4">
+        <div class="card-body">
+          <h2 class="h6 text-body-secondary text-uppercase mb-3">Your Results</h2>
+          <div class="row g-3">
+            <div class="col-6 col-md-3 stat-tile">
+              <div class="score-ring-box">
+                <svg class="score-ring" viewBox="0 0 96 96" width="96" height="96" aria-hidden="true">
+                  <circle class="score-ring-track" cx="48" cy="48" r="40"></circle>
+                  <circle id="score-ring-fill" class="score-ring-fill" cx="48" cy="48" r="40"></circle>
+                </svg>
+                <div class="score-ring-label">
+                  <span id="score-ring-fraction">0/0</span>
+                  <span id="score-ring-percent">0%</span>
+                </div>
+              </div>
+              <div class="stat-label mt-1">Section A score</div>
+            </div>
+            <div class="col-6 col-md-3 stat-tile">
+              <div class="stat-value" id="stat-sections">0/0</div>
+              <div class="stat-label">Sections completed</div>
+            </div>
+            <div class="col-6 col-md-3 stat-tile" id="stat-marks-tile" hidden>
+              <div class="stat-value" id="stat-marks">0/0</div>
+              <div class="stat-label">Marks scored</div>
+            </div>
+            <div class="col-6 col-md-3 stat-tile">
+              <span id="stat-band" class="badge fs-6"></span>
+              <div class="stat-label mt-1">Performance band</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form id="test-form">
+        {{SECTIONS_HTML}}
+        <div class="text-center my-4">
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-lg">Submit Test</button>
+        </div>
+      </form>
+
+    </div>
+
+    <div class="tab-pane" id="tab-reference">
+
+      <ul class="nav nav-pills mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button type="button" class="nav-link active" data-tab-target="ref-summary">Chapter Summary</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button type="button" class="nav-link" data-tab-target="ref-important">Most Important Topics</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button type="button" class="nav-link" data-tab-target="ref-revision">Revision Notes</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button type="button" class="nav-link" data-tab-target="ref-key-terms">Key Terms</button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane active show" id="ref-summary">
+          <section class="card mb-4">
+            <div class="card-body">
+              {{SUMMARY_HTML}}
+            </div>
+          </section>
+        </div>
+        <div class="tab-pane" id="ref-important">
+          {{IMPORTANT_TOPICS_HTML}}
+        </div>
+        <div class="tab-pane" id="ref-revision">
+          {{REVISION_HTML}}
+        </div>
+        <div class="tab-pane" id="ref-key-terms">
+          <section class="card mb-4">
+            <div class="card-body">
+              <dl class="row mb-0 small">
+                {{KEY_TERMS_HTML}}
+              </dl>
+            </div>
+          </section>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Shared solution-help modal: one copy for the whole page, content swapped per question -->
+<div class="modal fade" id="solution-modal" tabindex="-1" aria-modal="true" role="dialog" aria-labelledby="solution-modal-title" hidden>
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h6 mb-0" id="solution-modal-title">Answer, Justification &amp; Approach</h2>
+        <button type="button" class="btn-close" id="solution-modal-close" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="solution-modal-body"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" id="solution-modal-backdrop" hidden></div>
+
+<script>
+  // --- Theme: default to prefers-color-scheme, toggle button flips it ---
+  (function () {
+    const root = document.documentElement;
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-bs-theme", prefersDark ? "dark" : "light");
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      const next = root.getAttribute("data-bs-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-bs-theme", next);
+    });
+  })();
+
+  // --- Tabs (vanilla, no Bootstrap JS needed) ---
+  document.querySelectorAll("[data-tab-target]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const nav = btn.closest("ul.nav");
+      const content = nav.nextElementSibling;
+      nav.querySelectorAll(".nav-link").forEach((l) => l.classList.remove("active"));
+      btn.classList.add("active");
+      content.querySelectorAll(":scope > .tab-pane").forEach((p) => p.classList.remove("active", "show"));
+      document.getElementById(btn.dataset.tabTarget).classList.add("active", "show");
+    });
+  });
+
+  // --- Solution-help modal (vanilla, using Bootstrap's .modal/.modal-backdrop CSS only) ---
+  (function () {
+    const modal = document.getElementById("solution-modal");
+    const modalBody = document.getElementById("solution-modal-body");
+    const backdrop = document.getElementById("solution-modal-backdrop");
+
+    function openModal(qid) {
+      const template = document.querySelector(`template.solution-help-content[data-qid="${qid}"]`);
+      if (!template) return;
+      modalBody.innerHTML = "";
+      modalBody.appendChild(template.content.cloneNode(true));
+      modal.removeAttribute("hidden");
+      backdrop.removeAttribute("hidden");
+      requestAnimationFrame(() => {
+        modal.classList.add("show");
+        modal.style.display = "block";
+        backdrop.classList.add("show");
+      });
+      document.body.classList.add("modal-open");
+    }
+
+    function closeModal() {
+      modal.classList.remove("show");
+      modal.style.display = "none";
+      modal.setAttribute("hidden", "");
+      backdrop.classList.remove("show");
+      backdrop.setAttribute("hidden", "");
+      document.body.classList.remove("modal-open");
+    }
+
+    document.querySelectorAll(".solution-help-trigger").forEach((btn) => {
+      btn.addEventListener("click", () => openModal(btn.dataset.qid));
+    });
+    document.getElementById("solution-modal-close").addEventListener("click", closeModal);
+    backdrop.addEventListener("click", closeModal);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hasAttribute("hidden")) closeModal();
+    });
+  })();
+
+  // --- Score ring (same verified component as snippets/score-circle.html) ---
+  const RING_RADIUS = 40;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+  function initScoreRing() {
+    const fill = document.getElementById("score-ring-fill");
+    fill.style.strokeDasharray = String(RING_CIRCUMFERENCE);
+    fill.style.strokeDashoffset = String(RING_CIRCUMFERENCE);
+  }
+
+  function setScoreRing(correct, total) {
+    const fill = document.getElementById("score-ring-fill");
+    const fraction = document.getElementById("score-ring-fraction");
+    const percent = document.getElementById("score-ring-percent");
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const offset = RING_CIRCUMFERENCE * (1 - pct / 100);
+
+    fraction.textContent = `${correct}/${total}`;
+    percent.textContent = `${pct}%`;
+
+    let color = "var(--status-critical)";
+    if (pct >= 80) color = "var(--status-good)";
+    else if (pct >= 50) color = "var(--status-warning)";
+    fill.style.stroke = color;
+
+    void fill.getBoundingClientRect();
+    fill.style.strokeDashoffset = String(offset);
+    return pct;
+  }
+
+  window.addEventListener("DOMContentLoaded", initScoreRing);
+
+  function normalize(str) {
+    return (str || "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  document.getElementById("test-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    let correctCount = 0;
+    let totalSectionA = 0;
+    let marksScored = 0;
+    let marksTotal = 0;
+    let anyMarks = false;
+
+    document.querySelectorAll('.q[data-type="mcq"], .q[data-type="tf"], .q[data-type="fib"]').forEach((q) => {
+      totalSectionA++;
+      const type = q.dataset.type;
+      const expected = normalize(q.dataset.answer);
+      const feedback = q.querySelector(".feedback");
+      const marks = Number(q.dataset.marks || 0);
+      if (q.dataset.marks) { anyMarks = true; marksTotal += marks; }
+      let studentValue = "";
+      let isCorrect = false;
+
+      if (type === "mcq" || type === "tf") {
+        const checked = q.querySelector('input[type="radio"]:checked');
+        studentValue = checked ? checked.value : "";
+        isCorrect = normalize(studentValue) === expected;
+      } else if (type === "fib") {
+        const input = q.querySelector('input[type="text"]');
+        studentValue = input.value;
+        isCorrect = normalize(studentValue) === expected;
+      }
+
+      if (isCorrect) {
+        correctCount++;
+        if (q.dataset.marks) marksScored += marks;
+        feedback.textContent = "Correct!";
+        feedback.className = "feedback correct";
+      } else {
+        const shown = q.dataset.answer;
+        const label = type === "mcq" ? `Correct option: (${shown})` :
+                      type === "tf" ? `Correct answer: ${shown === "true" ? "True" : "False"}` :
+                      `Correct answer: ${shown}`;
+        feedback.textContent = studentValue ? `Not quite. ${label}` : `Not answered. ${label}`;
+        feedback.className = "feedback incorrect";
+      }
+    });
+
+    document.querySelectorAll('.q[data-type="free"]').forEach((q) => {
+      const modelBox = q.querySelector(".model-answer");
+      modelBox.textContent = "Model answer: " + q.dataset.model;
+      modelBox.style.display = "block";
+    });
+
+    // Sections completed: every input/textarea/radio-group in the section has a value
+    const sectionBlocks = document.querySelectorAll(".section-block");
+    let completedSections = 0;
+    sectionBlocks.forEach((block) => {
+      const questions = block.querySelectorAll(".q");
+      let allAnswered = true;
+      questions.forEach((q) => {
+        const type = q.dataset.type;
+        if (type === "mcq" || type === "tf") {
+          if (!q.querySelector('input[type="radio"]:checked')) allAnswered = false;
+        } else if (type === "fib") {
+          if (!q.querySelector('input[type="text"]').value.trim()) allAnswered = false;
+        } else if (type === "free") {
+          if (!q.querySelector("textarea").value.trim()) allAnswered = false;
+        }
+      });
+      if (allAnswered && questions.length > 0) completedSections++;
+    });
+    document.getElementById("stat-sections").textContent = `${completedSections}/${sectionBlocks.length}`;
+
+    const pct = setScoreRing(correctCount, totalSectionA);
+
+    if (anyMarks) {
+      document.getElementById("stat-marks-tile").hidden = false;
+      document.getElementById("stat-marks").textContent = `${marksScored}/${marksTotal}`;
+    }
+
+    const bandEl = document.getElementById("stat-band");
+    if (pct >= 80) {
+      bandEl.textContent = "Excellent";
+      bandEl.className = "badge fs-6 text-bg-success";
+    } else if (pct >= 50) {
+      bandEl.textContent = "Good";
+      bandEl.className = "badge fs-6 text-bg-warning";
+    } else {
+      bandEl.textContent = "Needs Review";
+      bandEl.className = "badge fs-6 text-bg-danger";
+    }
+
+    document.getElementById("dashboard-wrap").style.display = "block";
+    document.getElementById("submit-btn").disabled = true;
+    document.getElementById("submit-btn").textContent = "Submitted";
+    document.getElementById("dashboard-wrap").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+</script>
+
+</body>
+</html>

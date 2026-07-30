@@ -3,9 +3,11 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getExamEngineResponse } from "./agent.js";
+import { buildCatalog } from "./catalog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const chatHtmlPath = join(__dirname, "..", "public", "chat.html");
+const referenceDocsRoot = join(__dirname, "..", "reference-documents");
 const port = Number(process.argv[2] ?? 5175);
 const RESPONSE_TIMEOUT_MS = 60_000;
 
@@ -30,6 +32,13 @@ const server = createServer(async (req, res) => {
     const html = await readFile(chatHtmlPath, "utf-8");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(html);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/catalog") {
+    const classes = await buildCatalog(referenceDocsRoot);
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ classes }));
     return;
   }
 

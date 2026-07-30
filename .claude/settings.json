@@ -1,6 +1,9 @@
 {
   "permissions": {
-    "allow": [],
+    "allow": [
+      "Bash(grep -n 'querySelector\\\\|openModal' __TRACKED_VAR__/math-test-filled.html)",
+      "Bash(node -e ' *)"
+    ],
     "deny": []
   }
 }
