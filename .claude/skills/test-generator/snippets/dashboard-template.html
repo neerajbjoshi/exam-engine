@@ -4,7 +4,8 @@
   This is the ONE template every subject's interactive HTML test is built from —
   do not hand-roll page styling per generation. Fill in the {{PLACEHOLDER}} tokens
   below with subject-specific content and copy the result to
-  output/reports/<Subject>-<Class>-<DD-MM>-test.html. Everything outside the
+  output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-test.html.
+  Everything outside the
   placeholders (layout, dashboard, grading engine, theming) is verified and should
   be copied as-is.
 
@@ -122,6 +123,22 @@
     Markdown output mode still cites every question individually — this simplification
     is specific to the interactive HTML page.)
 
+    Optional: a question built around a real diagram/map/figure extracted from the source
+    PDF (see test-generator/SKILL.md's "Image-based questions" section for the extraction
+    workflow) gets an <img class="q-image"> at the top of its card body, before the
+    question text:
+      <div class="q card mb-3" data-qid="a3" data-type="mcq" data-answer="...">
+        <div class="card-body">
+          <div class="d-flex justify-content-end">{{SOLUTION_HELP_TRIGGER}}</div>
+          <img class="q-image" src="data:image/png;base64,..." alt="...short description...">
+          ... question text and inputs as usual ...
+        </div>
+      </div>
+    This works with any data-type — it's a visual addition, not a new question type. The
+    src is always a base64 data: URI (never a relative file path) so the page stays a
+    single self-contained file. Only use an image that was actually extracted from the
+    chapter's own source PDF and verified by viewing it — never a generated/invented one.
+
   Do not add a second theme toggle, second grading loop, or a competing score
   widget elsewhere on the page — this template's dashboard is the only one.
 -->
@@ -158,6 +175,7 @@
   .theme-toggle-wrap { position: sticky; top: 12px; float: right; z-index: 10; }
   .source-note { font-size: 0.8rem; }
   .q .card-body { padding: 1.1rem 1.25rem; }
+  .q-image { display: block; max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--bs-border-color); margin-bottom: 0.9rem; }
   .solution-help-trigger {
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
     width: 26px; height: 26px; border-radius: 50%; color: var(--accent);

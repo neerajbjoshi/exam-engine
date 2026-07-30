@@ -49,3 +49,7 @@ Chapter number → chapter name → total marks → time → Section A → Secti
 ## Formatting
 
 Clear headings, numbered questions, marks shown beside each question, proper mathematical notation, aligned working shown where relevant. In interactive-HTML mode, follow `test-generator/SKILL.md`'s HTML output rules (score circle, auto-scoring for Section A, self-compare for Sections B-D) with this section structure instead of the generic one.
+
+## Geometry figures
+
+If a question depends on a figure the chapter itself provides (a triangle with marked angles, a constructed diagram, a graph) rather than one the student is meant to draw from a text description, follow `test-generator/SKILL.md`'s "Image-based questions" workflow and embed the real figure extracted from the source PDF instead of describing it in words.

@@ -12,3 +12,8 @@ output/reports/**
 !output/reports/README.md
 !output/reports/**/
 !output/reports/**/README.md
+
+output/Unit Tests/**
+!output/Unit Tests/README.md
+!output/Unit Tests/**/
+!output/Unit Tests/**/README.md

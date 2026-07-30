@@ -20,7 +20,7 @@ From the request, work out: class, subject, and chapter(s) (or "all chapters" of
 
 ## Default test format
 
-**Mathematics uses its own format** — read `.claude/skills/test-generator/formats/mathematics.md` and follow it instead of the generic format below (still subject to every other rule in this file). All other subjects use the format below.
+**Mathematics, Science, Social Studies, and English use their own formats** — read `.claude/skills/test-generator/formats/mathematics.md` (mathematics), `.claude/skills/test-generator/formats/science.md` (science), `.claude/skills/test-generator/formats/social-studies.md` (social studies), or `.claude/skills/test-generator/formats/english.md` (english) and follow the matching one instead of the generic format below (still subject to every other rule in this file). All other subjects use the format below.
 
 Unless the user asks for a different structure, every generated test follows this exact format:
 
@@ -44,25 +44,53 @@ Always also produce, alongside the test:
 - Revision notes.
 - A "Key Terms" list of important definitions/keywords from the chapter(s) covered, visually distinguished (bold, a callout box, etc.) in whatever format you're producing.
 
+## Image-based questions (diagrams, maps, figures)
+
+When the chapter's own source PDF contains a genuine diagram, map, chart, or labeled figure — and the format in scope calls for diagram-based / picture-based / map-based questions (science, social studies) or a figure is otherwise directly relevant to a question in any subject — embed the real image rather than only describing it in words, using this workflow. This requires the `Bash` tool; if it isn't available in this session, fall back to a text-only question that references the diagram by description instead — never skip the question, and never fabricate an image to fill the gap.
+
+1. **Inventory**: run `pdfimages -list <path-to-pdf>` to list every embedded image (page, size, type) without extracting anything yet.
+2. **Filter candidates**: skip anything obviously decorative or irrelevant by size — logos, icons, tiny images (roughly under 100×100px), repeated page-border art. Keep candidates that look like real labeled diagrams, figures, maps, or charts.
+3. **Extract**: run `pdfimages -png <path-to-pdf> <scratchpad-prefix>` into the session's scratchpad directory (never the repo) to pull out the candidate images as PNG files.
+4. **Verify visually**: use the Read tool to actually view each extracted candidate before using it — confirm it's the right figure for the question you're writing, not a mismatched or irrelevant one. Never pick an image blind off the inventory list alone.
+5. **Use it**:
+   - **Interactive HTML** — base64-encode the chosen PNG and embed it inline as `<img class="q-image" src="data:image/png;base64,..." alt="...">` inside the question's card, above the question text (see `.q-image` in the shared template's leading comment). This keeps the page single-file/offline — never link to an external image file from the HTML.
+   - **Plain Markdown** — save the chosen image as a real file under an `images/` subfolder in the same Grade/Subject output folder (see Save location below) and reference it with standard Markdown image syntax (`![<short description>](images/<file>.png)`).
+6. **Answer key / solution-help**: if the image is part of a graded question, describe what the image shows in the justification/approach text too, so someone without the image rendered still gets a complete explanation.
+
+If no genuine diagram exists in the source for a topic that calls for one, don't invent one — ask the question in words instead, and if the format requires a diagram-based question count, say plainly that the source material doesn't include a usable image for that topic rather than fabricating one.
+
 ## Output — always produce both Markdown and interactive HTML
 
 Every test-generation request produces **both** output formats below by default — not just when the user says "HTML" or "webpage." Only produce a single format if the user explicitly asks for just one (e.g. "just the markdown," "no HTML this time").
 
+### Save location
+
+Every output file (Markdown or HTML) is saved under a Grade/Subject folder tree, not flat:
+
+```
+output/Unit Tests/<GradeFolder>/<SubjectFolder>/
+```
+
+- `<GradeFolder>` — `Grade-<N>` (e.g. `Grade-7`, `Grade-10`), matching the class in scope.
+- `<SubjectFolder>` — Title Case subject name: `Mathematics`, `Science`, `English`, `Social Studies`, or `Hindi`. For a subject outside this list (e.g. physics, chemistry, biology, kannada), use the Title Case of its own name the same way — the folder doesn't need to pre-exist, create it on demand.
+
+If this generation embeds any real extracted images (see "Image-based questions" above) in the **Markdown** output, also create an `images/` subfolder alongside the test files in that same Grade/Subject folder. The interactive HTML never needs this — its images are inlined as base64, not linked as files.
+
 ### Plain Markdown
 
-Save two files directly under `output/reports/`:
+Save two files directly under that folder:
 
 ```
-output/reports/<Subject>-<Class>-<DD-MM>-test.md
-output/reports/<Subject>-<Class>-<DD-MM>-answer-key.md
+output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-test.md
+output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-answer-key.md
 ```
 
-- `<Subject>` — Title Case, e.g. `Mathematics`, `SocialStudies`.
+- `<Subject>` — Title Case, no spaces, e.g. `Mathematics`, `SocialStudies`.
 - `<Class>` — no separators, e.g. `Grade10`.
 - `<DD-MM>` — today's day and month, zero-padded, dash-separated, e.g. `27-07`.
 - If a file with that exact name already exists (regenerating the same subject/class/day), append `-2`, `-3`, … before the suffix rather than overwriting.
 
-The test file includes the chapter/topic header, Section A/B questions, chapter summary, revision notes, and Key Terms. The answer key file includes answers for every question, with model answers and a short grading rubric for Section B's subjective questions.
+The test file includes the chapter/topic header, Section A/B questions, chapter summary, revision notes, and Key Terms. The answer key file includes answers for every question, with model answers and a short grading rubric for Section B's subjective questions. A question with a real extracted image embeds it via standard Markdown syntax pointing at the `images/` subfolder (see "Image-based questions" above) — never a bare description standing in for a real diagram if one was actually extracted.
 
 ### Interactive HTML
 
@@ -82,7 +110,7 @@ Both tab layers (top-level, and the Reference Material sub-tabs) reuse the same 
 
 Light/dark theming defaults to the browser's `prefers-color-scheme`, with a manual toggle.
 
-Your job per generation is only to author the question markup for each test section and the Reference Material content, following the exact data-attribute contract documented in the template's leading comment (`data-type="mcq|tf|fib"` + `data-answer=...` for Section A, `data-type="free"` + `data-model=...` for every other test section; optional `data-marks="N"` per question for formats that assign marks, e.g. mathematics). Wrap each test section in `<section class="card section-block" data-section="...">` so the dashboard's sections-completed count picks it up.
+Your job per generation is only to author the question markup for each test section and the Reference Material content, following the exact data-attribute contract documented in the template's leading comment (`data-type="mcq|tf|fib"` + `data-answer=...` for Section A, `data-type="free"` + `data-model=...` for every other test section; optional `data-marks="N"` per question for formats that assign marks, e.g. mathematics). Wrap each test section in `<section class="card section-block" data-section="...">` so the dashboard's sections-completed count picks it up. A question with a real extracted diagram/map/figure (see "Image-based questions" above) additionally gets an `<img class="q-image" src="data:image/png;base64,...">` at the top of its card body — this is compatible with every `data-type`, it's just a visual addition, not a new question type.
 
 **Every question, in every section, also gets a solution-help info icon** (top-right of its card) that opens the page's shared modal — using the `{{SOLUTION_HELP_TRIGGER}}`/`{{SOLUTION_HELP_TEMPLATE}}` markup in the template's leading comment — available any time, independent of Submit, so a student stuck on a question can see how to get full marks rather than only finding out after grading. A modal has no size limit, so this holds more than the three-line minimum: **Answer**, **Justification**, **Approach**, and **two similar practice questions with their own short answers**. This is required for every question across every subject, not optional decoration.
 
@@ -95,12 +123,12 @@ Because scoring runs entirely client-side with no server, the correct answers ne
 Save as:
 
 ```
-output/reports/<Subject>-<Class>-<DD-MM>-test.html
+output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-test.html
 ```
 
 Same naming convention and collision rule as the Markdown output above (each format's collision counter is independent — e.g. regenerating the same subject/class/day only for HTML still lands on `-test.html`, not `-2-test.html`, if no other `-test.html` exists yet for that day).
 
-After saving, tell the user both ways to open the HTML file: **direct open** — it's already a complete, self-contained page at `output/reports/<Subject>-<Class>-<DD-MM>-test.html`, so they can copy/move it anywhere and open it straight in a browser (double-click, or `start "<path>"` on Windows / `open "<path>"` on macOS), no server needed, works fully offline; or **local server** — `npm run serve -- "<path-to-the-file>"` from the project root, useful for viewing from another device on the same network or if `file://` restrictions get in the way. Only actually start the server if asked to run it now.
+After saving, tell the user both ways to open the HTML file: **direct open** — it's already a complete, self-contained page at `output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-test.html`, so they can copy/move it anywhere and open it straight in a browser (double-click, or `start "<path>"` on Windows / `open "<path>"` on macOS), no server needed, works fully offline; or **local server** — `npm run serve -- "<path-to-the-file>"` from the project root, useful for viewing from another device on the same network or if `file://` restrictions get in the way. Only actually start the server if asked to run it now.
 
 ## Insufficient content
 
@@ -111,3 +139,4 @@ If no reference documents have been uploaded for the requested class/subject/cha
 - Never include a question that isn't grounded in a file under `reference-documents/`.
 - Never guess or backfill from memory when a requested chapter/topic is missing — report the gap; only stop entirely (without producing a test) if nothing at all in scope is available.
 - If a subject in scope has no `.claude/skills/<subject>/SKILL.md`, treat it as unsupported and tell the user rather than answering from general knowledge.
+- Never generate or fabricate a new diagram, map, or figure — an embedded image must be a real extraction from the source PDF, verified by actually viewing it (see "Image-based questions" above), never an invented illustration.

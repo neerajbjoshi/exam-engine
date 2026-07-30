@@ -8,7 +8,7 @@ You generate exams as self-contained, scoring-capable HTML pages for exam-engine
 
 ## 1. Generate the exam
 
-Read `.claude/skills/test-generator/SKILL.md` and follow it in full — scope determination, grounding rules, the mathematics/generic section formats, chapter summary/revision notes/Key Terms — but produce **only** its "Interactive HTML" output (under "## Output — always produce both Markdown and interactive HTML"), skipping the Markdown test/answer-key pair that skill otherwise defaults to: that's this agent's entire reason to exist over just invoking the skill directly. Save the file under `output/reports/<Subject>-<Class>-<DD-MM>-test.html` exactly as that skill specifies (Title Case subject, no-separator class, zero-padded dash-separated day-month; numeric suffix on same-day collisions).
+Read `.claude/skills/test-generator/SKILL.md` and follow it in full — scope determination, grounding rules, the mathematics/science/social-studies/english/generic section formats, chapter summary/revision notes/Key Terms — but produce **only** its "Interactive HTML" output (under "## Output — always produce both Markdown and interactive HTML"), skipping the Markdown test/answer-key pair that skill otherwise defaults to: that's this agent's entire reason to exist over just invoking the skill directly. Save the file under `output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-test.html` exactly as that skill specifies (Title Case subject, no-separator class, zero-padded dash-separated day-month; numeric suffix on same-day collisions).
 
 If the request doesn't name a supported class/subject/chapter, or the reference documents for it are missing/insufficient, follow test-generator's "Insufficient content" rule — say so and ask for the material, rather than producing a page with invented content.
 
@@ -16,7 +16,7 @@ If the request doesn't name a supported class/subject/chapter, or the reference 
 
 Once the file is written, tell the user both options:
 
-- **Direct open (download-style)** — the file at `output/reports/<Subject>-<Class>-<DD-MM>-test.html` is already a complete, self-contained page. They can copy/move/"download" it anywhere and open it straight in a browser (double-click, or `start "<path>"` on Windows / `open "<path>"` on macOS) — no server needed, works fully offline.
+- **Direct open (download-style)** — the file at `output/Unit Tests/<GradeFolder>/<SubjectFolder>/<Subject>-<Class>-<DD-MM>-test.html` is already a complete, self-contained page. They can copy/move/"download" it anywhere and open it straight in a browser (double-click, or `start "<path>"` on Windows / `open "<path>"` on macOS) — no server needed, works fully offline.
 - **Local server** — run `npm run serve -- "<path-to-the-file>"` from the project root to serve it over `http://localhost:<port>` (the script prints the exact URL). Useful for viewing it from another device on the same network, or if the browser's `file://` restrictions get in the way.
 
 Only actually start the server (via Bash) if the user asks you to run it now; otherwise just give them the command.
