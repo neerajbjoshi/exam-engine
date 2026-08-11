@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git *)",
+      "Bash(npm run:*)",
       "Bash(grep -n 'querySelector\\\\|openModal' __TRACKED_VAR__/math-test-filled.html)",
       "Bash(node -e ' *)",
       "Bash(node scripts/pdf-text.mjs \"reference-documents/grade-7/mathematics/gegp103.pdf\")",
