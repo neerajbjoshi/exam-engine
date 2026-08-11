@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const chatHtmlPath = join(__dirname, "..", "public", "chat.html");
 const referenceDocsRoot = join(__dirname, "..", "reference-documents");
 const port = Number(process.argv[2] ?? 5175);
-const RESPONSE_TIMEOUT_MS = 60_000;
+const RESPONSE_TIMEOUT_MS = 120_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -49,10 +49,13 @@ const server = createServer(async (req, res) => {
     });
     req.on("end", async () => {
       try {
-        const { message } = JSON.parse(body) as { message: string };
-        const reply = await withTimeout(getExamEngineResponse(message), RESPONSE_TIMEOUT_MS);
+        const { message, sessionId } = JSON.parse(body) as { message: string; sessionId?: string };
+        const { text, sessionId: newSessionId } = await withTimeout(
+          getExamEngineResponse(message, sessionId),
+          RESPONSE_TIMEOUT_MS,
+        );
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ reply }));
+        res.end(JSON.stringify({ reply: text, sessionId: newSessionId }));
       } catch (error) {
         const isTimeout = error instanceof Error && error.message === "timeout";
         res.writeHead(isTimeout ? 504 : 500, { "Content-Type": "application/json; charset=utf-8" });

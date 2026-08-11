@@ -331,16 +331,21 @@
       addMessage(reply, "teacher");
     }
 
+    let sessionId = null;
+
     async function askBackend(message) {
       const pending = addMessage("Thinking…", "teacher pending");
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, sessionId }),
         });
         const data = await res.json();
         pending.remove();
+        if (data.sessionId) {
+          sessionId = data.sessionId;
+        }
         addMessage(data.reply ?? data.error ?? "Sorry, I didn't get a response.", "teacher");
       } catch {
         pending.remove();

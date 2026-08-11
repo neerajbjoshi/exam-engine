@@ -2,7 +2,15 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { config } from "./config.js";
 import { examTools } from "./tools/index.js";
 
-export async function getExamEngineResponse(prompt: string): Promise<string> {
+export interface ExamEngineResult {
+  text: string;
+  sessionId: string;
+}
+
+export async function getExamEngineResponse(
+  prompt: string,
+  resumeSessionId?: string,
+): Promise<ExamEngineResult> {
   const result = query({
     prompt,
     options: {
@@ -13,10 +21,12 @@ export async function getExamEngineResponse(prompt: string): Promise<string> {
       mcpServers: {
         "exam-engine-tools": examTools,
       },
+      ...(resumeSessionId ? { resume: resumeSessionId } : {}),
     },
   });
 
   let text = "";
+  let sessionId = "";
   for await (const message of result) {
     if (message.type === "assistant") {
       for (const block of message.message.content) {
@@ -25,6 +35,9 @@ export async function getExamEngineResponse(prompt: string): Promise<string> {
         }
       }
     }
+    if ("session_id" in message && message.session_id) {
+      sessionId = message.session_id;
+    }
   }
-  return text;
+  return { text, sessionId };
 }

@@ -59,6 +59,17 @@ When the chapter's own source PDF contains a genuine diagram, map, chart, or lab
 
 If no genuine diagram exists in the source for a topic that calls for one, don't invent one — ask the question in words instead, and if the format requires a diagram-based question count, say plainly that the source material doesn't include a usable image for that topic rather than fabricating one.
 
+## Grounding verification pass (required before saving output)
+
+Before writing any output file, re-verify your own draft — don't trust the first pass just because it carries a citation:
+
+1. For every question, definition (Key Terms), and claim in the chapter summary/revision notes, re-open the specific cited source file/section (Read or Grep it again) and confirm the drafted content is actually supported there — not merely plausible or "the kind of thing this chapter would say."
+2. If an item doesn't hold up, revise just that item (regenerate it grounded in what the source actually says, or pick a different source passage) and re-verify it. Allow at most 2 revision attempts per item.
+3. If an item still isn't grounded after 2 attempts, drop it (and, for a fixed question count, replace it with a different, verifiable item) rather than shipping it — never let a failed verification silently ship anyway. If dropping would leave a section short, say so explicitly in your reply to the user rather than padding the count with an ungrounded item.
+4. This applies to everything presented as drawn from the source: Section A/B questions, the answer key's model answers, Key Terms, Most Important Topics, Revision Notes questions, and — for the interactive HTML — the solution-help modal's Answer/Justification/Approach and its two similar practice questions.
+
+Only once every item has passed (or been fixed/replaced per above) do you proceed to actually save the Markdown/HTML files below.
+
 ## Output — always produce both Markdown and interactive HTML
 
 Every test-generation request produces **both** output formats below by default — not just when the user says "HTML" or "webpage." Only produce a single format if the user explicitly asks for just one (e.g. "just the markdown," "no HTML this time").

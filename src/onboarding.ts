@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildCatalog, humanize, type CatalogClass } from "./catalog.js";
 import { getExamEngineResponse } from "./agent.js";
+import { loadLastSessionId, saveLastSessionId } from "./session.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const referenceDocsRoot = join(__dirname, "..", "reference-documents");
@@ -117,7 +118,12 @@ export async function runStartEngineFlow(): Promise<void> {
 
     if (send === "y" || send === "yes") {
       console.log("\nThinking…\n");
-      console.log(await getExamEngineResponse(prompt));
+      const resumeSessionId = await loadLastSessionId();
+      const { text, sessionId } = await getExamEngineResponse(prompt, resumeSessionId);
+      console.log(text);
+      if (sessionId) {
+        await saveLastSessionId(sessionId);
+      }
     } else {
       console.log(`\nNot sent. Run it later with:\n  npm run dev -- "${prompt.replace(/"/g, '\\"')}"\n`);
     }

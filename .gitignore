@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 *.log
+.exam-engine-session.json
 
 reference-documents/**
 !reference-documents/README.md
